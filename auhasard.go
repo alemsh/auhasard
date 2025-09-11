@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
-	"io"
+	//"io"
 	"log"
 	"net/http"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 // id=articleWRD
@@ -21,15 +23,17 @@ func getDefintion(word string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	body, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	defer resp.Body.Close()
 	if resp.StatusCode > 299 {
-		log.Fatalf("Response failed with status code: %d and\nbody: %s\n", resp.StatusCode, body)
+		log.Fatalf("Response failed with status code: %d", resp.StatusCode)
 	}
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%s", body)
+
+	fmt.Printf("%s", doc.Find(".WRD").Text())
+
 }
 func main() {
 	getDefintion("coucou")
