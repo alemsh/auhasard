@@ -10,26 +10,41 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+// A translation is collection of interpretations
 type translation struct {
-	kind map[string]interpretation
+	interpretation map[string]interpretation
 }
 
 type interpretation struct {
-	from    string
-	to      string
-	context []string
+	from    word
+	to      []word
+	context []context
+	kind    string
+}
+
+type word struct {
+	name     string
+	language string
+	pos      string
+}
+
+type context struct {
+	language string
+	phrase   string
+}
+
+type WRParser interface {
+	parseRoot()
+	parseWRDTable()
 }
 
 func parseRoot(root *goquery.Selection) *translation {
-	t := new(translation)
-
 	root.Each(func(i int, s *goquery.Selection) {
-		translationType, err := selectTranslationType(s, t)
+		tType, err := selectTranslationType(s, t)
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		
+		t.interpretation.parseWRDTable(s)
 	})
 
 	return t
@@ -38,7 +53,7 @@ func parseRoot(root *goquery.Selection) *translation {
 func selectTranslationType(s *goquery.Selection, t *translation) (string, error) {
 	tType, exists := s.Find("tr.wrtopsection").Attr("data-ph")
 	if exists != true {
-		return "", errors.New("tr element with class=wrtopsection and attribute data-ph found")
+		return "", errors.New("tr element with class=wrtopsection and attribute data-ph not found")
 	}
 	switch tType {
 	case "sMainMeanings":
@@ -47,17 +62,21 @@ func selectTranslationType(s *goquery.Selection, t *translation) (string, error)
 		return "compound", nil
 	case "sAddTrans":
 		return "supplement", nil
+	default:
+		return "", errors.New("data-ph attribute did not hold one of expected values")
 	}
+}
 
+func parseWRDTable(root *goquery.Selection, t translation) {
+	var interp []interpretation
 
-func parseWRDTable(root *goquery.Selection) []*interpretation {
-	return root.Find("tr").Each(func(i int, s *goquery.Selection) {
+	//loop through siblings and construct interpretations
 
-	})
+	return &interp
 }
 
 // id=articleWRD
-func getWRTranslation(word string) {
+func getWRTranslation(word string) translation {
 	user_agent := "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36"
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://www.wordreference.com/fren/%s", word), nil)
 	if err != nil {
