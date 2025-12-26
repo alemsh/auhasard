@@ -82,7 +82,7 @@ func parseTables(tables *goquery.Selection) *translation {
 
 func GroupEvenOddRows(table *goquery.Selection) []*goquery.Selection {
 	var groups []*goquery.Selection
-	var currentGroup *goquery.Selection
+	currentGroup := new(goquery.Selection)
 
 	table.Find("tr").Each(func(i int, tr *goquery.Selection) {
 		class, _ := tr.Attr("class")
@@ -96,25 +96,21 @@ func GroupEvenOddRows(table *goquery.Selection) []*goquery.Selection {
 		}
 		// Start a new group if none is active
 		if currentGroup.Length() == 0 {
-			currentGroup = &goquery.Selection{}
 			currentGroup = currentGroup.AddSelection(tr)
 		} else {
 			prevClass, _ := currentGroup.Last().Attr("class")
-			if class != prevClass {
+			if !containsClass(class, prevClass) {
 				groups = append(groups, currentGroup)
-				currentGroup = nil
-			} else {
-
+				currentGroup = new(goquery.Selection)
 			}
 			currentGroup = currentGroup.AddSelection(tr)
 		}
-
 	})
 	return groups
 }
 
 func containsClass(classAttr, className string) bool {
-	for _, c := range strings.Fields(classAttr) {
+	for c := range strings.FieldsSeq(classAttr) {
 		if c == className {
 			return true
 		}
@@ -143,20 +139,46 @@ func selectTranslationKind(s *goquery.Selection) (string, error) {
 }
 
 // Parses even/odd group rows from table
-func parseTRs(s *goquery.Selection, interp *interpretation) error {
-	DefToSelection := s.RemoveFiltered("span.dsense")
-	rootTR := s.Find("tr[id]")
-	FrWdSelection := rootTR.Find("td.FrWd")
-	ToWdSelection := rootTR.Find("td.ToWd")
-	DefFrSelection := rootTR.Find("td:not([class])")
-	FrExSelection := s.Find("td.FrEx")
-	ToExSelection := s.Find("td.ToEx")
+func parseTRs(group *goquery.Selection, interp *interpretation) error {
+	group.Each(func(i int, tr *goquery.Selection) {
+		html, _ := goquery.OuterHtml(tr)
+		fmt.Println(html)
+	})
+	//group.Find("td[class]")
+	re := regexp.MustCompile(`\(([^)]*)\)`)
+
+	group.Each(func(i int, tr *goquery.Selection) {
+		tr.Find("tr[id]").Each(func(i int, td *goquery.Selection) {
+			em := tr.RemoveFiltered("em")
+			def := tr.RemoveFiltered("td:not([class])")
+			FrWd = tr.Find("td.FrWd")
+			for _, phrase := range strings.Split(FrWd.Text(), ",") {
+				interp.from = append(interp.from, &word{
+					name:       phrase,
+					language:   FrLang,
+					pos:        FrPosEM.Text(),
+					definition: definitions[0],
+				})
+			}
+		})
+		tr.Find("td.FrEx").Each(func(i int, td *goquery.Selection) {
+			return
+		})
+		tr.Find("td.ToEx").Each(func(i int, td *goquery.Selection) {
+			return
+		})
+	})
+	FrWdSelection := group.Find("td.FrWd")
+	ToWdSelection := group.Find("td.ToWd")
+	DefFrSelection := group.Find("td:not([class])")
+	FrExSelection := group.Find("td.FrEx")
+	ToExSelection := group.Find("td.ToEx")
 	FrPosEM := FrWdSelection.RemoveFiltered("em")
 	ToPosEM := ToWdSelection.RemoveFiltered("em")
 	FrLang := FrPosEM.AttrOr("data-lang", "fr")
 	ToLang := ToPosEM.AttrOr("data-lang", "en")
 
-	fmt.Printf("to: %v\nfrom: %v\n", DefFrSelection.Text(), DefToSelection.Text())
+	fmt.Printf("to: %v\nfrom: %v\n", FrWdSelection.Text(), ToWdSelection.Text())
 
 	re := regexp.MustCompile(`\(([^)]*)\)`)
 
